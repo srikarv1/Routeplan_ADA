@@ -1,0 +1,686 @@
+#include<iostream>
+#include<string.h>
+#include<math.h>
+#include<fstream>
+#include <vector>
+#include <queue>
+#include <stack>
+using namespace std;
+
+class Location
+{
+    bool left,right,up,down,visit; // bool variables to store if its possible to move up left right and down and one to check if cell is visited.
+    int x,y; // to store coordinates of current cell
+    int prevX,prevY; // to store location of previous cell
+    Location* prev; // pointer that stores address of previous location
+    bool start,goal;
+    char name; // storing character
+    int cost; // cumulative cost(weight)
+
+    public:
+    Location(bool left = false, bool right = false, bool up = false, bool down = false, char n = ' ', int cost = 0)
+    : left(left), right(right), up(up), down(down), name(n), cost(cost)
+    {
+    start = false;
+    goal = false;
+    prev = NULL;
+    visit = false;
+    x=0;
+    y=0;
+    prevX=0;
+    prevY=0;
+    }
+    Location(const Location& L){
+     name= L.name;
+     visit =  L.visit;
+     down = L.down;
+     up = L.up;
+     left= L.left;
+     right = L.right;
+     x = L.x;
+     y = L.y;
+     prevX= L.prevX;
+     prevY= L.prevY;
+     cost = L.cost;
+     start = L.start;
+     goal = L.goal;
+     prev = L.prev;
+    }
+
+    void Setname(char n=' ') { name = n; }
+    void Setvisit(bool v = true)
+    {
+     visit = v;
+     if(this->getname() == ' ')
+        this->Setname('.');
+    }
+    void Setdown(bool d = true) { down = d; }
+    void Setup(bool t = true) { up = t; }
+    void Setleft(bool l=true) { left = l; }
+    void Setright(bool r = true) { right = r; }
+    void SetX(int xx) { x = xx; }
+    void SetY(int yy) { y = yy; }
+    void SetprevX(int x) { prevX = x;}
+    void SetprevY(int y) { prevY = y;}
+    void Setstart(bool s = true) {start =s;}
+    void Setgoal(bool g = true) {goal =g;}
+    void Setcost(int c) {cost=c;}
+    void Setprev(Location *p) { prev = p;}
+
+
+    Location* getprev() {return prev;}
+    char getname() { return name; }
+    bool getvisit() { return visit; }
+    bool getdown() { return down; }
+    bool getup() { return up; }
+    bool getleft() { return left; }
+    bool getright() { return right; }
+    int getX() { return x; }
+    int getY() { return y; }
+    int getprevX() { return prevX;}
+    int getprevY() { return prevY;}
+    bool getgoal() {return goal;}
+    bool getstart() {return start;}
+    int getcost() {return cost;}
+};
+
+class Map
+{
+    vector< vector<Location*> > MAP;//this will create a matrix of vectors
+    int row,col;
+    Location* start,goal;
+    public:
+    Map(int r = 0, int c = 0)
+    {
+        row = r;
+        col = c;
+        start = NULL;
+        goal = NULL;
+
+    }
+    Map(Map &m)
+    {
+        MAP=m.MAP;
+        row = m.row;
+        col = m.col;
+        start=m.start;
+        goal=m.goal;
+    }
+    int getrow(){return row;}
+    int getcol(){return col;}
+    vector< vector<Location*> > getmap() {return MAP;}
+    void loadline(vector<Location*> line);
+    void disp_Map();
+    void setcoordinate();
+    void setStart();
+    void setGoal();
+    void BFS();
+    void DFS();
+    void dijsktra();
+    void checkbd(Location* cur);
+    void checkdijsktra(Location* cur);
+
+};
+void Map ::loadline(vector<Location*> line)//function to load line
+{
+    MAP.push_back(line);
+    row+=1;
+    col = line.size();
+}
+void Map::setcoordinate() //function to set coordinates for each location
+{
+    for (int i = 0; i < row; i++)
+    {
+        for (int j = 0; j < col; j++)
+        {
+            MAP[i][j]->SetX(i);
+            MAP[i][j]->SetY(j);
+        }
+    }
+}
+
+
+void Map ::disp_Map()
+{ // function to display map
+    cout << '+';
+    for (int i = 0; i < col-1; i++)
+        cout << "---+";
+    cout << endl;
+    for (int i = 0; i < row-1; i++)
+    {
+        cout << '|';
+        for (int j = 0; j < col-1; j++)
+        {
+            if (MAP[i][j]->getstart())
+            {
+                cout << "(" << MAP[i][j]->getname() << ")";
+            }
+            else if (MAP[i][j]->getgoal())
+            {
+                cout << "{" << MAP[i][j]->getname() << "}";
+            }
+            else
+            {
+                cout << " " << MAP[i][j]->getname() << " ";
+            }
+
+            if (!MAP[i][j]->getright())
+            {
+                cout << '|';
+            }
+            else
+            {
+                cout << ' ';
+            }
+        }
+        
+    cout << endl;
+    cout << '+';
+        
+    for (int j = 0; j < col-1; j++)
+    {
+        if (!MAP[i][j]->getdown())
+        {
+            cout << "---+";
+        }
+        else
+        {
+            cout << "   +";
+        }
+    }
+        cout << endl;
+}
+    cout << endl;
+}
+
+void Map ::setStart()//for setting start point of the map
+{
+    for(int i=0;i<row;++i)
+    {
+        for(int j=0;j<col;++j)
+        {
+            if(MAP[i][j]->getstart())
+                start = MAP[i][j];
+        }
+    }
+}
+void Map ::setGoal()//setting goal for the map
+{
+    for(int i=0;i<row;++i)
+    {
+        for(int j=0;j<col;++j)
+        {
+            if(MAP[i][j]->getgoal())
+                goal = MAP[i][j];
+        }
+    }
+}
+
+void Map::checkbd(Location* goal)//check function for bfs and dfs
+{
+    stack<Location*> check;
+    check.push(goal);
+    goal = (goal->getprev());
+
+    if (goal == NULL)
+     cout << "NULL distance!!!" << endl;
+
+    while (goal != NULL)
+    {
+         if (goal->getname() == '.')
+         {
+             goal->Setname('o');
+         }
+         check.push(goal);
+         goal = (goal->getprev());
+    }
+    while (!check.empty())
+    {
+         cout << "(" << (check.top()->getX() + 1) << ", " << (check.top()->getY() + 1) << ") ";
+         check.pop();
+    }
+    cout << endl << endl;
+}
+
+void Map:: checkdijsktra(Location* goal)//check function for da
+{
+    stack<Location*> check;
+    check.push(goal);
+    goal = (goal->getprev());
+    int cost = 0;
+
+    if (goal == NULL)
+    {
+        cout << "NULL distance!!! ";
+    }
+    
+    while (goal != NULL)
+    {
+         if(!goal->getstart()) goal->Setname(std::to_string(goal->getcost())[0]);
+         check.push(goal);
+         goal = (goal->getprev());
+    }
+    while (!check.empty())
+    {
+         cout << "(" << (check.top()->getX() + 1) << ", " << (check.top()->getY() + 1) << ") ";
+         cost = cost + check.top()->getcost();
+         check.pop();
+    }
+    cout << "The cost is: " << cost << endl;
+    cout << endl;
+}
+
+
+void Map :: DFS()//dfs algorithm
+{
+    Location* curr;
+    stack<Location*> stk;
+    for (int i = 0; i < row; i++)
+    {
+        for (int j = 0; j < col; j++)
+        {
+            MAP[i][j]->Setvisit(false);
+            if (MAP[i][j] == start)
+            {
+                MAP[i][j]->Setvisit(true);
+                stk.push(MAP[i][j]);
+            }
+        }
+    }
+    while (!stk.empty())
+    {
+        curr = stk.top();
+        stk.pop();
+        curr->Setvisit();
+        if (curr->getgoal())
+        {
+            return checkbd(curr);
+        }
+        if (curr->getdown() == true and ((MAP[curr->getX() + 1][(curr->getY())])->getvisit() == false))
+        {
+            stk.push(MAP[curr->getX() + 1][((curr->getY()))]);
+            MAP[curr->getX() + 1][(curr->getY())]->Setprev(curr);
+        }
+        if (curr->getright() == true and ((MAP[curr->getX()][(curr->getY() + 1)])->getvisit() == false))
+        {
+            stk.push(MAP[((curr->getX()))][(curr->getY() + 1)]);
+            MAP[curr->getX()][(curr->getY() + 1)]->Setprev(curr);
+        }
+        if (curr->getleft() == true and ((MAP[curr->getX()][(curr->getY() - 1)])->getvisit() == false))
+        {
+            stk.push(MAP[((curr->getX()))][(curr->getY() - 1)]);
+            MAP[curr->getX()][(curr->getY() - 1)]->Setprev(curr);
+        }
+        if (curr->getup() == true and ((MAP[curr->getX() - 1][(curr->getY())])->getvisit() == false))
+        {
+            stk.push(MAP[curr->getX() - 1][(curr->getY())]);
+            MAP[curr->getX() - 1][(curr->getY())]->Setprev(curr);
+        }
+    }
+    cout << "no results for dfs" << endl;
+}
+
+void Map :: BFS()//bfs algorithm
+{
+    Location* curr;
+    queue<Location*> q;
+    for (int i = 0; i < row; i++)
+    {
+        for (int j = 0; j < col; j++)
+        {
+            MAP[i][j]->Setvisit(false);
+            if (MAP[i][j] == start)
+            {
+                MAP[i][j]->Setvisit(true);
+                q.push(MAP[i][j]);
+            }
+        }
+    }
+    while (!q.empty())
+    {
+        curr = q.front();
+        q.pop();
+        curr->Setvisit();
+        if (curr->getgoal())
+        {
+            return checkbd(curr);
+        }
+        if (curr->getdown() == true and ((MAP[curr->getX() + 1][(curr->getY())])->getvisit() == false))
+        {
+            q.push(MAP[curr->getX() + 1][((curr->getY()))]);
+            MAP[curr->getX() + 1][(curr->getY())]->Setprev(curr);
+        }
+        if (curr->getright() == true and ((MAP[curr->getX()][(curr->getY() + 1)])->getvisit() == false))
+        {
+            q.push(MAP[((curr->getX()))][(curr->getY() + 1)]);
+            MAP[curr->getX()][(curr->getY() + 1)]->Setprev(curr);
+        }
+        if (curr->getleft() == true and ((MAP[curr->getX()][(curr->getY() - 1)])->getvisit() == false))
+        {
+            q.push(MAP[((curr->getX()))][(curr->getY() - 1)]);
+            MAP[curr->getX()][(curr->getY() - 1)]->Setprev(curr);
+        }
+        if (curr->getup() == true and ((MAP[curr->getX() - 1][(curr->getY())])->getvisit() == false))
+        {
+            q.push(MAP[curr->getX() - 1][(curr->getY())]);
+            MAP[curr->getX() - 1][(curr->getY())]->Setprev(curr);
+        }
+    }
+    cout << "no results for bfs" << endl;
+}
+
+void Map :: dijsktra()//dijsktra's algorithmn
+{
+    Location* curr;
+    priority_queue<Location*> pq;
+    for (int i = 0; i < row; i++)
+    {
+        for (int j = 0; j < col; j++)
+        {
+            MAP[i][j]->Setvisit(false);
+            if (MAP[i][j] == start)
+            {
+                MAP[i][j]->Setvisit(true);
+                pq.push(MAP[i][j]);
+            }
+        }
+    }
+    while (!pq.empty())
+    {
+        curr = pq.top();
+        pq.pop();
+        curr->Setvisit();
+        if (curr->getgoal())
+        {
+            return checkdijsktra(curr);
+        }
+        if (curr->getdown() == true and ((MAP[curr->getX() + 1][(curr->getY())])->getvisit() == false))
+        {
+            pq.push(MAP[curr->getX() + 1][((curr->getY()))]);
+            MAP[curr->getX() + 1][(curr->getY())]->Setprev(curr);
+        }
+        if (curr->getright() == true and ((MAP[curr->getX()][(curr->getY() + 1)])->getvisit() == false))
+        {
+            pq.push(MAP[((curr->getX()))][(curr->getY() + 1)]);
+            MAP[curr->getX()][(curr->getY() + 1)]->Setprev(curr);
+        }
+        if (curr->getleft() == true and ((MAP[curr->getX()][(curr->getY() - 1)])->getvisit() == false))
+        {
+            pq.push(MAP[((curr->getX()))][(curr->getY() - 1)]);
+            MAP[curr->getX()][(curr->getY() - 1)]->Setprev(curr);
+        }
+        if (curr->getup() == true and ((MAP[curr->getX() - 1][(curr->getY())])->getvisit() == false))
+        {
+            pq.push(MAP[curr->getX() - 1][(curr->getY())]);
+            MAP[curr->getX() - 1][(curr->getY())]->Setprev(curr);
+        }
+    }
+    cout << "no results for da" << endl;
+}
+
+bool LoadMap(Map &M)
+{
+
+        string fname;
+        cout << "\nWhich map do you want to open?: ";
+        cin.ignore();
+        getline(cin, fname);
+        ifstream in(fname);
+        if (in.fail())
+        {
+            cout << "\nError! CAN'T OPEN MAP.. " << fname << endl;
+            return false;
+        }
+        else
+        {
+            for (int i = 0; i < M.getrow(); i++)
+            {
+                for (int j = 0; j < M.getcol(); j++)
+                {
+                    delete M.getmap()[i][j];
+                }
+            }
+        }
+
+    vector<Location*> lines;
+    char str1[100], str2[100], str3[100];
+    in.getline(str1, 100);
+    in.getline(str2, 100);
+    in.getline(str3, 100);
+    int line = 1, cell = 1;
+
+    while (!in.eof())
+    {
+        int i = 0, j = 0, k = 1, cost = -1, cell = 0, row = 0, col = 0;
+        char name = ' ';
+        bool up, down, right, left;
+
+        if (line != 1)
+        {
+            strcpy(str1, str3);
+            in.getline(str2, 100);
+            in.getline(str3, 100);
+        }
+
+        while (i < strlen(str1) - 1)
+        {
+            up = down = right = left = true;
+            name = ' ';
+            if (str1[i] == '+') i++;
+            if (str1[i] == '-') up = false;
+            else if (str1[i] == ' ') up = true;
+            i = i + 3;
+
+
+            if (str2[j] == '|') left = false;
+            else if (str2[j] == ' ') left = true;
+
+            j = j + 2;
+            if (str2[j] != ' ')
+                if (isdigit(str2[j]))
+                    cost = (str2[j] - '0');
+                else
+                {
+                    cost = 0;
+                    name = str2[j];
+                }
+            else
+            {
+                cost = 0;
+            }
+
+            j = j + 2;
+            if (str2[j] == '|')
+                right = false;
+            else if (str2[j] == ' ')
+                right = true;
+
+
+            if (str3[k] == ' ') down = true;
+            else if (str3[k] == '-') down = false;
+            k = k + 4;
+
+            Location *temp = new Location(left, right, up, down, name, cost);
+            lines.push_back(temp);
+        }
+
+        M.loadline(lines);
+        lines.clear();
+        line++;
+    }
+    cout << "\n" << "MAP READ SUCCESSFULLY" << "\n" << endl;
+    return true;
+}
+
+
+bool Setstart(Map& M)
+{
+    char ch;
+    cout << "What is the starting character in the route plan? ";
+    cin >> ch;
+    for (int i = 0; i < M.getrow(); i++)
+    {
+        for (int j = 0; j < M.getcol(); j++)
+        {
+            if (M.getmap()[i][j]->getstart())
+            {
+                M.getmap()[i][j]->Setstart(false);
+            }
+            if (M.getmap()[i][j]->getname() == ch)
+            {
+                M.getmap()[i][j]->Setstart(true);
+                return true;
+            }
+        }
+    }
+    
+    return false;
+    
+}
+
+bool Setgoal(Map& M)
+{
+    char ch;
+    cout << "\n" << "What is the goal character in the route plan? ";
+    cin >> ch;
+    for (int i = 0; i < M.getrow(); i++)
+    {
+        for (int j = 0; j < M.getcol(); j++)
+        {
+            if (M.getmap()[i][j]->getgoal())
+            {
+                M.getmap()[i][j]->Setgoal(false);
+            }
+            if (M.getmap()[i][j]->getname() == ch)
+            {
+                M.getmap()[i][j]->Setgoal(true);
+                return true;
+            }
+        }
+    }
+    return false;
+   
+}
+
+
+
+
+int main()
+{
+    char op;
+    int choice;
+    Map M;
+    bool startset = false, goalset = false, path = false, file = false;
+    cout<<"\t\t\t\t\t ROUTE PLANNING APP \n";
+    cout<<"\t\t\t\t\t By LAKSHMI SAI SRIKAR (2K19/CO/208) AND JAYANT RANA (2K19/CO/177)";
+    do
+    {
+        cout<<"\t \n\t\t\t\t\t MAIN MENU:\n";
+        cout<<"ENTER 1 TO LOAD MAP\n";
+        cout<<"ENTER 2 TO DISPLAY MAP\n";
+        cout<<"ENTER 3 TO SET START\n";
+        cout<<"ENTER 4 TO SET GOAL\n";
+        cout<<"ENTER 5 TO FIND PATH USING DFS\n";
+        cout<<"ENTER 6 TO FIND PATH USING BFS\n";
+        cout<<"ENTER 7 TO FIND MIN COST PATH USING DIJKSTRA'S ALGORITHM\n";
+        cout<<"ENTER 8 TO DISPLAY PATH\n";
+        cout<<"ENTER 9 TO QUIT\n";
+        cout<<"ENTER YOUR CHOICE (1-9):\n";
+        cin>>choice;
+        if(choice==1)
+        {
+            file = LoadMap(M);
+            M.setcoordinate();
+        }
+        if(choice==2)
+        {
+            if(file)
+                M.disp_Map();
+            else cout<<"There is no file \n";
+        }
+        if(choice==3)
+        {
+            if(file)
+            {
+                startset = true;
+                Setstart(M);
+                M.setStart();
+            }
+            else
+                cout<<"There is no file \n";
+        }
+        if(choice==4)
+        {
+            if(file)
+            {
+                goalset = true;
+                Setgoal(M);
+                M.setGoal();
+            }
+            else
+            cout<<"There is no file \n";
+        }
+        if(choice==5)
+        {
+            if (startset && goalset)
+            {
+                cout << endl;
+                M.DFS();
+                path = true;
+            }
+            else
+            {
+                cout << "\nThere is no file" << endl;
+            }
+        }
+        if(choice==6)
+        {
+            if (startset && goalset)
+            {
+                cout << endl;
+                M.BFS();
+                path = true;
+            }
+            else
+            {
+                cout << "\nThere is no file" << endl;
+            }
+        }
+        if(choice==7)
+        {
+            if (startset && goalset)
+            {
+                cout << endl;
+                M.dijsktra();
+                path = true;
+            }
+            else
+            {
+                cout << "\nThere is no file" << endl;
+            }
+        }
+        if(choice==8)
+        {
+           if (path)
+            {
+                cout << endl;
+                M.disp_Map();
+            }
+            else
+            {
+                cout << "\nNo path has been found!" << endl;
+            }
+        }
+        if(choice==9)
+        {
+            cout<<"GOODBYE!!\n";
+            exit(0);
+        }
+        cout<<"DO YOU WISH TO CONTINUE?(Y/N)\n";
+        cin>>op;
+    }
+    while (op=='Y');
+    
+
+    return 0;
+}
